@@ -12,9 +12,7 @@ if isinstance(model_bundle, tuple):
     model, feature_names = model_bundle
 else:
     model = model_bundle
-    feature_names = ['trip_distance', 'fare_amount', 'extra', 'mta_tax', 'tip_amount',
-                     'tolls_amount', 'improvement_surcharge', 'congestion_surcharge',
-                     'trip_duration', 'passenger_count']  # fallback if feature list wasn't saved
+    feature_names = model.feature_names_in_.tolist() if hasattr(model, 'feature_names_in_') else []
 
 # Page Config
 st.set_page_config(page_title="NYC Green Taxi Fare Predictor", layout="wide")
@@ -57,10 +55,27 @@ if app_mode == "Prediction Tool":
         submitted = st.form_submit_button("Predict Fare")
 
         if submitted:
-            trip_duration = 15  # hardcoded or compute if timestamps used
+            # Timestamp features
+            pickup_datetime = datetime.combine(pickup_date, pickup_time)
+            dropoff_datetime = pickup_datetime + pd.Timedelta(minutes=15)
+            weekday = pickup_datetime.strftime("%A")
+            hour = pickup_datetime.hour
 
-            # Raw input dictionary
+            # Default/dummy values
+            vendor_id = 1
+            ratecode_id = 1.0
+            payment_type = 1.0
+            trip_type = 1.0
+            store_and_fwd_flag_Y = 0
+
+            # Base input dict
             raw_input = {
+                'VendorID': vendor_id,
+                'lpep_pickup_datetime': pickup_datetime,
+                'lpep_dropoff_datetime': dropoff_datetime,
+                'PULocationID': 130,
+                'DOLocationID': 205,
+                'passenger_count': passenger_count,
                 'trip_distance': trip_distance,
                 'fare_amount': fare_amount,
                 'extra': extra,
@@ -69,19 +84,29 @@ if app_mode == "Prediction Tool":
                 'tolls_amount': tolls_amount,
                 'improvement_surcharge': improvement_surcharge,
                 'congestion_surcharge': congestion_surcharge,
-                'trip_duration': trip_duration,
-                'passenger_count': passenger_count
+                'pickup_datetime': pickup_datetime,
+                'dropoff_datetime': dropoff_datetime,
+                'trip_duration': 15,
+                'store_and_fwd_flag_Y': store_and_fwd_flag_Y
             }
 
-            input_df = pd.DataFrame([raw_input])
-
-            # Ensure all required features are present
+            # One-hot encoding
             for col in feature_names:
-                if col not in input_df.columns:
-                    input_df[col] = 0  # fill missing with 0
+                if "RatecodeID_" in col:
+                    raw_input[col] = 1.0 if col == f"RatecodeID_{float(ratecode_id)}" else 0.0
+                elif "payment_type_" in col:
+                    raw_input[col] = 1.0 if col == f"payment_type_{float(payment_type)}" else 0.0
+                elif "trip_type_" in col:
+                    raw_input[col] = 1.0 if col == f"trip_type_{float(trip_type)}" else 0.0
+                elif "weekday_" in col:
+                    raw_input[col] = 1.0 if col == f"weekday_{weekday}" else 0.0
+                elif "hourofday_" in col:
+                    raw_input[col] = 1.0 if col == f"hourofday_{hour}" else 0.0
+                elif col not in raw_input:
+                    raw_input[col] = 0.0
 
-            # Reorder columns to match model input
-            input_df = input_df[feature_names]
+            # Build input DataFrame
+            input_df = pd.DataFrame([raw_input])[feature_names]
 
             # Predict
             prediction = model.predict(input_df)[0]
@@ -91,7 +116,6 @@ if app_mode == "Prediction Tool":
 else:
     st.title("📊 Model Performance Analysis")
 
-    # Example static metrics
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Mean Squared Error", "24.59")
     col2.metric("RMSE", "4.96")
