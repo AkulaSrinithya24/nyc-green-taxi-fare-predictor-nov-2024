@@ -28,7 +28,7 @@ st.markdown("""
     .main {background-color: #111827; color: white;}
     h1, h2, h3, h4, h5, h6 {color: #10B981;}
     .stButton>button {background-color: #10B981; color: white;}
-    .stSelectbox>div>div {color: black;}
+    .stSelectbox>div>div {color: white;}
     </style>
 """, unsafe_allow_html=True)
 
