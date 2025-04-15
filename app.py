@@ -6,7 +6,7 @@ import joblib
 from datetime import datetime
 
 # Load model
-model = joblib.load("model.pkl")
+model = joblib.load("green_taxi_fare_model.pkl")
 
 # Page Config
 st.set_page_config(page_title="NYC Green Taxi Fare Predictor", layout="wide")
