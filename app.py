@@ -19,18 +19,57 @@ else:
 # Page Config
 st.set_page_config(page_title="NYC Green Taxi Fare Predictor", layout="wide")
 
-# Sidebar Navigation
-app_mode = st.sidebar.selectbox("Choose Application Mode", ["Prediction Tool", "Model Performance"])
-
-# Custom Styling
+# Custom Styling for dark theme and visible selectbox
 st.markdown("""
     <style>
-    .main {background-color: #111827; color: white;}
-    h1, h2, h3, h4, h5, h6 {color: #10B981;}
-    .stButton>button {background-color: #10B981; color: white;}
-    .stSelectbox>div>div {color: white;}
+    /* Main content styling */
+    .main {
+        background-color: #111827;
+        color: white;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        color: #10B981;
+    }
+
+    /* Button styling */
+    .stButton>button {
+        background-color: #10B981;
+        color: white;
+    }
+
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background-color: #1f2937;
+        color: white;
+    }
+
+    /* Sidebar label text */
+    .stSidebar label {
+        color: white;
+    }
+
+    /* Dropdown/selectbox text and background */
+    .stSelectbox div[data-baseweb="select"] {
+        background-color: #374151;
+        color: white;
+        border: 1px solid #10B981;
+        border-radius: 5px;
+    }
+
+    .stSelectbox div[data-baseweb="select"] * {
+        color: white !important;
+    }
+
+    /* Dropdown arrow icon */
+    .stSelectbox svg {
+        fill: white;
+    }
     </style>
 """, unsafe_allow_html=True)
+
+# Sidebar Navigation
+app_mode = st.sidebar.selectbox("Choose Application Mode", ["Prediction Tool", "Model Performance"])
 
 # Prediction Tool UI
 if app_mode == "Prediction Tool":
