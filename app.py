@@ -4,15 +4,17 @@ import numpy as np
 import joblib
 from datetime import datetime
 
-# Load model and feature list
+# Load model and extract feature names safely
 model_bundle = joblib.load("green_taxi_fare_model.pkl")
 
-# Unpack model and feature names
-if isinstance(model_bundle, tuple):
+if isinstance(model_bundle, tuple) and len(model_bundle) == 2:
     model, feature_names = model_bundle
-else:
+elif hasattr(model_bundle, 'feature_names_in_'):
     model = model_bundle
-    feature_names = model.feature_names_in_.tolist()  # use built-in if available
+    feature_names = list(model.feature_names_in_)
+else:
+    st.error("Model is missing required feature name metadata.")
+    st.stop()
 
 # Page Config
 st.set_page_config(page_title="NYC Green Taxi Fare Predictor", layout="wide")
@@ -30,10 +32,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# UI for Prediction Tool
+# Prediction Tool UI
 if app_mode == "Prediction Tool":
     st.title("🚖 NYC Green Taxi Trip Amount Predictor")
-    st.info("This application predicts the total amount for a NYC green taxi trip based on various trip features.")
+    st.info("This application predicts the total fare amount for a NYC green taxi trip.")
 
     with st.form("predict_form"):
         col1, col2, col3 = st.columns(3)
@@ -55,11 +57,9 @@ if app_mode == "Prediction Tool":
         submitted = st.form_submit_button("Predict Fare")
 
         if submitted:
-            # Hardcoded duration or derived if needed
-            trip_duration = 15
+            trip_duration = 15  # Static for now; optionally compute from timestamps
 
-            # Base input
-            base_input = {
+            raw_input = {
                 'trip_distance': trip_distance,
                 'fare_amount': fare_amount,
                 'extra': extra,
@@ -69,29 +69,28 @@ if app_mode == "Prediction Tool":
                 'improvement_surcharge': improvement_surcharge,
                 'congestion_surcharge': congestion_surcharge,
                 'trip_duration': trip_duration,
-                'passenger_count': passenger_count,
-                # Add dummy values for other one-hot encoded features
-                **{col: 0 for col in feature_names if col not in [
-                    'trip_distance', 'fare_amount', 'extra', 'mta_tax', 'tip_amount',
-                    'tolls_amount', 'improvement_surcharge', 'congestion_surcharge',
-                    'trip_duration', 'passenger_count'
-                ]}
+                'passenger_count': passenger_count
             }
 
-            # Create DataFrame and reorder
-            input_df = pd.DataFrame([base_input])[feature_names]
+            input_df = pd.DataFrame([raw_input])
 
-            # Ensure numeric dtype
-            input_df = input_df.astype(np.float64)
+            # Add missing features as zeros
+            for col in feature_names:
+                if col not in input_df.columns:
+                    input_df[col] = 0.0
 
-            # Prediction
-            prediction = model.predict(input_df)[0]
-            st.success(f"Estimated Total Fare: ${prediction:.2f}")
+            # Reorder and ensure float dtype
+            input_df = input_df[feature_names].astype(np.float64)
+
+            try:
+                prediction = model.predict(input_df)[0]
+                st.success(f"💵 Estimated Total Fare: ${prediction:.2f}")
+            except Exception as e:
+                st.error(f"Prediction failed: {str(e)}")
 
 # Model Performance UI
 else:
     st.title("📊 Model Performance Analysis")
-
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Mean Squared Error", "24.59")
     col2.metric("RMSE", "4.96")
