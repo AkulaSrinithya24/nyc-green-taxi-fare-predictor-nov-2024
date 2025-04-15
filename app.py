@@ -1,12 +1,20 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
 from datetime import datetime
 
-# Load model
-model = joblib.load("green_taxi_fare_model.pkl")
+# Load model and feature list
+model_bundle = joblib.load("green_taxi_fare_model.pkl")
+
+# Unpack model and feature names
+if isinstance(model_bundle, tuple):
+    model, feature_names = model_bundle
+else:
+    model = model_bundle
+    feature_names = ['trip_distance', 'fare_amount', 'extra', 'mta_tax', 'tip_amount',
+                     'tolls_amount', 'improvement_surcharge', 'congestion_surcharge',
+                     'trip_duration', 'passenger_count']  # fallback if feature list wasn't saved
 
 # Page Config
 st.set_page_config(page_title="NYC Green Taxi Fare Predictor", layout="wide")
@@ -23,11 +31,6 @@ st.markdown("""
     .stSelectbox>div>div {color: black;}
     </style>
 """, unsafe_allow_html=True)
-
-# Sample Input Features (match training)
-features = ['trip_distance', 'fare_amount', 'extra', 'mta_tax', 'tip_amount',
-            'tolls_amount', 'improvement_surcharge', 'congestion_surcharge',
-            'trip_duration', 'passenger_count']
 
 # UI for Prediction Tool
 if app_mode == "Prediction Tool":
@@ -52,16 +55,36 @@ if app_mode == "Prediction Tool":
             congestion_surcharge = st.number_input("Congestion Surcharge ($)", value=2.5)
 
         submitted = st.form_submit_button("Predict Fare")
-        
+
         if submitted:
-            trip_duration = 15  # Assume 15 mins (or calculate from timestamps if available)
-            input_data = pd.DataFrame([[
-                trip_distance, fare_amount, extra, mta_tax, tip_amount,
-                tolls_amount, improvement_surcharge, congestion_surcharge,
-                trip_duration, passenger_count
-            ]], columns=features)
-            
-            prediction = model.predict(input_data)[0]
+            trip_duration = 15  # hardcoded or compute if timestamps used
+
+            # Raw input dictionary
+            raw_input = {
+                'trip_distance': trip_distance,
+                'fare_amount': fare_amount,
+                'extra': extra,
+                'mta_tax': mta_tax,
+                'tip_amount': tip_amount,
+                'tolls_amount': tolls_amount,
+                'improvement_surcharge': improvement_surcharge,
+                'congestion_surcharge': congestion_surcharge,
+                'trip_duration': trip_duration,
+                'passenger_count': passenger_count
+            }
+
+            input_df = pd.DataFrame([raw_input])
+
+            # Ensure all required features are present
+            for col in feature_names:
+                if col not in input_df.columns:
+                    input_df[col] = 0  # fill missing with 0
+
+            # Reorder columns to match model input
+            input_df = input_df[feature_names]
+
+            # Predict
+            prediction = model.predict(input_df)[0]
             st.success(f"Estimated Total Fare: ${prediction:.2f}")
 
 # Model Performance UI
